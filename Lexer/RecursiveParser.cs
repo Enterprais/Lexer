@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace Lexer
 {
     class RecursiveParser
     {
-        public class Tree
+        public class Tree //класс дерева
         {
             public Node Nodes;
 
@@ -17,7 +18,7 @@ namespace Lexer
                 this.Nodes = node;
             }
 
-            public class Node
+            public class Node //базовый класс для ноды дерева
             {
                 public enum OperatorType
                 {
@@ -28,17 +29,17 @@ namespace Lexer
                     Exp
                 }
 
-                public virtual string Show()
+                public virtual string Show() //функция вывода содержимого ноды
                 {
                     return "()";
                 }
             }
 
-            public class BinOperator : Node
+            public class BinOperator : Node //нода бинарного оператора
             {
-                Node Left;
-                Node Right;
-                OperatorType Operator;
+                public Node Left;
+                public Node Right;
+                public OperatorType Operator;
 
                 public BinOperator(OperatorType op, Node left, Node right)
                 {
@@ -53,9 +54,9 @@ namespace Lexer
                 }
             }
 
-            public class Identifier : Node
-            {
-                string Value;
+            public class Identifier : Node //нода строчного идентификатора 
+            { 
+                public string Value;
 
                 public Identifier(string val)
                 {
@@ -68,9 +69,9 @@ namespace Lexer
                 }
             }
 
-            public class Number : Node
+            public class Number : Node //нода числа (все приводим к double)
             {
-                double Value;
+                public double Value;
 
                 public Number(double val)
                 {
@@ -83,9 +84,9 @@ namespace Lexer
                 }
             }
 
-            public class UnarMinus : Node
+            public class UnarMinus : Node //нода унарного минуса 
             {
-                Node Value;
+                public Node Value;
 
                 public UnarMinus(Node tree)
                 {
@@ -100,22 +101,24 @@ namespace Lexer
             }
         }
 
-        public Tree GetTree(List<Lexer.ResultToken> tokens)
+        public Tree GetTree(List<Lexer.ResultToken> tokens) //получение дерева из списка токенов
         {
             StepComp comp = ParseE(tokens);
             if (comp.results.Count == 0)
                 return comp.tree;
             else
-                throw new Exception("Сломалось");
-                
+                throw new ParserException("конец ввода", comp.results);
+
         }
 
-        struct StepComp
+        struct StepComp //структура результата вычисления продукции
         {
             public List<Lexer.ResultToken> results;
             public Tree tree;
         }
 
+        //далее функции разборов нетерминалов по таблице 
+        
         StepComp ParseE(List<Lexer.ResultToken> tokens)
         {
             return ParseE2(ParseT(tokens));
@@ -240,7 +243,6 @@ namespace Lexer
                                                                                     comp.tree.Nodes,
                                                                                     temp.tree.Nodes));
 
-
                                 return ParseE2(next);
                             }
                         }
@@ -270,7 +272,7 @@ namespace Lexer
                         }
                         else
                         {   
-                            throw new Exception("Нет закрывающей скобки");
+                            throw new ParserException(")", temp.results);
                         }
                         
                     }
@@ -289,7 +291,8 @@ namespace Lexer
                     {
                         StepComp next;
                         next.results = tokens.Skip(1).ToList();
-                        next.tree = new Tree(new Tree.Number(double.Parse(tokens[0].output)));
+                        var englishCulture = CultureInfo.GetCultureInfo("en-US");
+                        next.tree = new Tree(new Tree.Number(double.Parse(tokens[0].output, englishCulture)));
                         return next;
                     }
                     break;
@@ -310,7 +313,25 @@ namespace Lexer
                     break;
             }
 
-            throw new Exception("LOLD");
+            throw new ParserException("(, Id, Number или -", tokens);
         }
     }
+
+    class ParserException : Exception //класс исключения работы синтаксического анализатора
+    {
+        public ParserException(string mes, List<Lexer.ResultToken> tok):base(mes)
+        {
+            string ErrMes = "Ошибка: ожидалось \"" + mes + "\" но получен ";
+
+            if(tok.Count == 0)
+                ErrMes += "конец ввода";
+            else
+                ErrMes += "\"" + tok[0].output + "\"";
+
+            Console.WriteLine(ErrMes);
+        }
+        
+        
+    }
+
 }
