@@ -11,7 +11,7 @@ namespace Lexer
 
         public List<ResultToken> GetTokens(string input) // функции получения списка токенов из входной строки
         {
-            return DFA(new Baggage(new FullState(input, "", 0), null));
+            return DFA(input);
         }
 
         enum TokenName //Имена токенов 
@@ -25,7 +25,7 @@ namespace Lexer
             Nothing
         }
 
-        enum Action { Continue, Restart, Stop } //Стадии работы анализатора
+        enum Action { Continue, Stop } //Стадии работы анализатора
 
         TokenName FromStateToTokenName(int state) //функция конвертирующая состояние в соответсвующий токен
         {
@@ -90,44 +90,6 @@ namespace Lexer
             return -1;
         }
 
-        class FullState //класс описания состояния анализатора на определенном шаге 
-        {
-            public string input; //входная строка
-            public string output; // то что накопилось в выходной строке
-            public int stateNum; //номер состояния
-
-            public FullState(string inp, string outp, int state)
-            {
-                this.input = inp;
-                this.output = outp;
-                this.stateNum = state;
-            }
-        }
-
-        class Baggage //класс состояния анализатора с сохранением последнего состояния токена
-        {
-            public FullState current; //текущее состояние
-            public FullState last; //последнее состояние токена
-
-            public Baggage(FullState cur, FullState last)
-            {
-                this.current = cur;
-                this.last = last;
-            }
-        }
-
-        class StepResult //результат вычисления шага анализатора
-        {
-            public Action action; //дальнейшая стадия
-            public Baggage baggage; //состояние анализатора
-
-            public StepResult(Action act, Baggage bag)
-            {
-                this.action = act;
-                this.baggage = bag;
-            }
-        }
-
         public class ResultToken //итоговый токен
         {
             public string name; //имя токена
@@ -140,66 +102,50 @@ namespace Lexer
             }
         }
 
-        FullState NewLastSt(FullState curState, FullState lastState) //вычисление нового сохраненного состояния токена
+        List<ResultToken> DFA(string input)
         {
-            TokenName token = FromStateToTokenName(curState.stateNum);
-            if (token != TokenName.Nothing) //если на данном шаге есть токен, то сохранить состояние
-                return curState;
-            else
-                return lastState;
-        }
-         
-        StepResult OneStepDFA(Baggage baggage) //вычисление одного шага анализатора
-        {
-            string CurInput = baggage.current.input;
-            string CurOutput = baggage.current.output;
-            int CurState = baggage.current.stateNum;
+            List<ResultToken> Tokens = new List<ResultToken>(); //список выходных токенов
+            ResultToken LastToken = null; //последний сохранненый токен
+            string Output = ""; //выходная строка для токена
+            int CurState = 0; //текущее состояние
+            int InIndex = 0; //текщий индекс входной строки
+            int LastInIndex = 0;
+            Action Action = Action.Continue; //текущее состояние анализатора
 
-            if (CurInput == "") //если входная строка пуста, то останавливаем анализатор и возвращаем текущее и последнее сохр. состояние
-                return new StepResult(Action.Stop,
-                                      new Baggage(baggage.current,
-                                                  NewLastSt(baggage.current, baggage.last)));
-            else if (TransitionTable(CurState, CurInput[0]) == -1) //если нет дальнейшего перехода, то откатываем результат на предыдущий сохраненный
-                return new StepResult(Action.Restart, new Baggage(baggage.current, NewLastSt(baggage.current, baggage.last)));
-            else //иначе продолжаем работу
-                return new StepResult(Action.Continue,
-                                      new Baggage(new FullState(CurInput.Substring(1),                                      //передаем дальше хвост вх. строки
-                                                                CurInput[0] == ' ' ? CurOutput : CurOutput + CurInput[0],   //записываем в выходную голову строки
-                                                                TransitionTable(CurState, CurInput[0])),                    //и получаем следущее состояние 
-                                                  NewLastSt(baggage.current, baggage.last)));
-        }
-
-        List<ResultToken> DFA(Baggage baggage)
-        {
-            StepResult result = OneStepDFA(baggage); //вычисление шага анализатора
-            if (result.action == Action.Stop) //остановка анализатора
+            while (Action != Action.Stop) //читаем входную строку пока не получим останов анализатора
             {
-                if (result.baggage.last == null) //если нет последнего сохраненного состояния (не нашли токен)
-                    return new List<ResultToken>(); //то вернем пустой список токенов
-                else //иначе добавим в список токенов новое значение из последнего состояния
+                //обнуляем значения при анализе нового токена 
+                Output = "";
+                CurState = 0;
+                LastToken = null;
+
+                while (CurState != -1) //анализируем входную строку до отсутсвия перехода
                 {
-                    List<ResultToken> resultTokens = new List<ResultToken>();
-                    resultTokens.Add(new ResultToken(FromStateToTokenName(result.baggage.last.stateNum).ToString(),
-                                                                          result.baggage.last.output));
-                    return resultTokens;
+                    TokenName temp = FromStateToTokenName(CurState);
+                    if (temp != TokenName.Nothing)
+                    {
+                        LastToken = new ResultToken(temp.ToString(), Output);
+                        LastInIndex = InIndex;
+                    }
+                    if (InIndex > input.Length-1)  //проверка на окончания входной строки
+                    {
+                        Action = Action.Stop;
+                        break;
+                    }
+                    CurState = TransitionTable(CurState, input[InIndex]); //новое состояние из таблицы переходов
+                    if (LastToken == null && CurState == -1) //останавливаем анализатор если попали в неизвестный символ
+                        throw new LexerException(input[InIndex]);
 
+                    if (CurState > 0) //запись символа в токен (если не пробел)
+                        Output += input[InIndex];
+                    InIndex++; 
                 }
+
+                InIndex = LastInIndex; //возврат входного символа к последнему успешному токену
+                if (LastToken != null)
+                    Tokens.Add(LastToken);              
             }
-            else if (result.action == Action.Restart) //если перезапустили анализатор
-            {
-                if (result.baggage.last == null) //если нет последнего сохраненного состояния (не нашли токен)
-                    return new List<ResultToken>(); //то вернем пустой список токенов
-                else //иначе записываем токен в начало списка токенов и перезапускаем анлизатор с 0 состояния
-                {
-                    return CreateList(DFA(new Baggage(new FullState(result.baggage.last.input, "", 0), null)),
-                                          new ResultToken(FromStateToTokenName(result.baggage.last.stateNum).ToString(),
-                                                                               result.baggage.last.output));
-                }
-            }
-            else //если продолжение работы, то просто передаем состояние анализатора на дальнейший шаг
-            {
-                return DFA(result.baggage);
-            }
+            return Tokens;
         }
 
         List<ResultToken> CreateList(List<ResultToken> list, ResultToken token) //функция добавляющая токен в начало списка токенов
@@ -207,5 +153,15 @@ namespace Lexer
             list.Insert(0, token);
             return list;
         }
+
+        class LexerException : Exception
+        {
+            public LexerException(char ch)
+            {
+                string ErrMes = "Ошибка: обнаружен неизвестный символ \"" + ch + "\"";
+                Console.WriteLine(ErrMes);
+            }
+        }
+
     }
 }

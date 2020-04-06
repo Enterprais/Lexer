@@ -9,6 +9,9 @@ namespace Lexer
 {
     class RecursiveParser
     {
+        List<Lexer.ResultToken> Tokens;
+        int CurIn = 0;
+
         public class Tree //класс дерева
         {
             public Node Nodes;
@@ -101,65 +104,60 @@ namespace Lexer
             }
         }
 
-        public Tree GetTree(List<Lexer.ResultToken> tokens) //получение дерева из списка токенов
+        public RecursiveParser(List<Lexer.ResultToken> tokens)
         {
-            StepComp comp = ParseE(tokens);
-            if (comp.results.Count == 0)
-                return comp.tree;
-            else
-                throw new ParserException("конец ввода", comp.results);
-
+            this.Tokens = tokens;
+            CurIn = 0;
         }
 
-        struct StepComp //структура результата вычисления продукции
+        public Tree GetTree(List<Lexer.ResultToken> tokens) //получение дерева из списка токенов
         {
-            public List<Lexer.ResultToken> results;
-            public Tree tree;
+            Tree comp = ParseE(CurIn);
+            if (CurIn > Tokens.Count - 1)
+                return comp;
+            else
+                throw new ParserException("конец ввода", Tokens, CurIn);
+
         }
 
         //далее функции разборов нетерминалов по таблице 
         
-        StepComp ParseE(List<Lexer.ResultToken> tokens)
+        Tree ParseE(int index)
         {
-            return ParseE2(ParseT(tokens));
+            return ParseE2(ParseT(index));
         }
 
-        StepComp ParseE2(StepComp comp)
+        Tree ParseE2(Tree comp)
         {
-            if (comp.results.Count == 0)
+            if (CurIn > Tokens.Count - 1)
                 return comp;
             else
             {
-                switch (comp.results[0].name)
+                switch (Tokens[CurIn].name)
                 {
                     case "Operator":
                         {
-                            if (comp.results[0].output == "+")
+                            if (Tokens[CurIn].output == "+")
                             {
-                                StepComp temp = ParseT(comp.results.Skip(1).ToList());
+                                Tree temp = ParseT(CurIn++);
 
-                                StepComp next;
-                                next.results = temp.results;
-                                next.tree = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Plus,
-                                                                                    comp.tree.Nodes,
-                                                                                    temp.tree.Nodes));
-
+                                Tree next;
+                                next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Plus,
+                                                                                    comp.Nodes,
+                                                                                    temp.Nodes));
                                 return ParseE2(next);
                             }
 
-                            else if (comp.results[0].output == "-")
+                            else if (Tokens[CurIn].output == "-")
                             {
-                                StepComp temp = ParseT(comp.results.Skip(1).ToList());
+                                Tree temp = ParseT(CurIn++);
 
-                                StepComp next;
-                                next.results = temp.results;
-                                next.tree = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Minus,
-                                                                                    comp.tree.Nodes,
-                                                                                    temp.tree.Nodes));
-
+                                Tree next;
+                                next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Minus,
+                                                                                    comp.Nodes,
+                                                                                    temp.Nodes));
                                 return ParseE2(next);
                             }
-
                         }
                         break;
 
@@ -169,46 +167,42 @@ namespace Lexer
             }
         }
 
-        StepComp ParseT(List<Lexer.ResultToken> tokens)
+        Tree ParseT(int index)
         {
-            return ParseT2(ParseF(tokens));
+            return ParseT2(ParseF(index));
         }
 
-        StepComp ParseT2(StepComp comp)
+        Tree ParseT2(Tree comp)
         {
-            if (comp.results.Count == 0)
+            if (CurIn > Tokens.Count - 1)
                 return comp;
             else
             {
-                switch (comp.results[0].name)
+                switch (Tokens[CurIn].name)
                 {
                     case "Operator":
                         {
-                            if (comp.results[0].output == "*")
+                            if (Tokens[CurIn].output == "*")
                             {
-                                StepComp temp = ParseT(comp.results.Skip(1).ToList());
+                                Tree temp = ParseT(CurIn++);
 
-                                StepComp next;
-                                next.results = temp.results;
-                                next.tree = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Mult,
-                                                                                    comp.tree.Nodes,
-                                                                                    temp.tree.Nodes));
+                                Tree next;
+                                next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Mult,
+                                                                                    comp.Nodes,
+                                                                                    temp.Nodes));
                                 return ParseE2(next);
                             }
 
-                            else if (comp.results[0].output == "/")
+                            else if (Tokens[CurIn].output == "/")
                             {
-                                StepComp temp = ParseT(comp.results.Skip(1).ToList());
+                                Tree temp = ParseT(CurIn++);
 
-                                StepComp next;
-                                next.results = temp.results;
-                                next.tree = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Div,
-                                                                                    comp.tree.Nodes,
-                                                                                    temp.tree.Nodes));
-
+                                Tree next;
+                                next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Div,
+                                                                                    comp.Nodes,
+                                                                                    temp.Nodes));
                                 return ParseE2(next);
                             }
-
                         }
                         break;
 
@@ -218,31 +212,29 @@ namespace Lexer
             }
         }
 
-        StepComp ParseF(List<Lexer.ResultToken> tokens)
+        Tree ParseF(int index)
         {
-            return ParseF2(ParseV(tokens));
+            return ParseF2(ParseV(index));
         }
 
-        StepComp ParseF2(StepComp comp)
+        Tree ParseF2(Tree comp)
         {
-            if (comp.results.Count == 0)
+            if (CurIn > Tokens.Count - 1)
                 return comp;
             else
             {
-                switch (comp.results[0].name)
+                switch (Tokens[CurIn].name)
                 {
                     case "Operator":
                         {
-                            if (comp.results[0].output == "^")
+                            if (Tokens[CurIn].output == "^")
                             {
-                                StepComp temp = ParseT(comp.results.Skip(1).ToList());
+                                Tree temp = ParseT(CurIn++);
 
-                                StepComp next;
-                                next.results = temp.results;
-                                next.tree = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Exp,
-                                                                                    comp.tree.Nodes,
-                                                                                    temp.tree.Nodes));
-
+                                Tree next;
+                                next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Exp,
+                                                                                    comp.Nodes,
+                                                                                    temp.Nodes));
                                 return ParseE2(next);
                             }
                         }
@@ -251,61 +243,63 @@ namespace Lexer
                     default: return comp;
                 }
                 return comp;
-            }
-            
+            }           
         }
 
-        StepComp ParseV(List<Lexer.ResultToken> tokens)
+        Tree ParseV(int index)
         {
-            switch (tokens[0].name)
+            if (CurIn > Tokens.Count - 1)
+                throw new ParserException("(, Id, Number или -", Tokens, CurIn);
+            switch (Tokens[CurIn].name)
             {
                 case "Lparen":
                     {
-                        StepComp temp = ParseE(tokens.Skip(1).ToList());
+                        Tree temp = ParseE(CurIn++);
 
-                        if (temp.results.Count != 0 && temp.results[0].name == "Rparen")
+                        if ((CurIn <= Tokens.Count - 1) && Tokens[CurIn].name == "Rparen")
                         {
-                            StepComp next;
-                            next.results = temp.results.Skip(1).ToList();
-                            next.tree = temp.tree;
+                            Tree next;
+                            CurIn++;
+                            next = temp;
                             return next;
                         }
                         else
                         {   
-                            throw new ParserException(")", temp.results);
-                        }
-                        
+                            throw new ParserException(")", Tokens, CurIn);
+                        }                       
                     }
                     break;
 
                 case "Id":
                     {
-                        StepComp next;
-                        next.results = tokens.Skip(1).ToList();
-                        next.tree = new Tree(new Tree.Identifier(tokens[0].output));
+                        Tree next;
+                        string outStr = Tokens[CurIn].output;
+                        CurIn++;
+                        next = new Tree(new Tree.Identifier(outStr));
                         return next;
                     }
                     break;
 
                 case "Number":
                     {
-                        StepComp next;
-                        next.results = tokens.Skip(1).ToList();
+                        Tree next;
+                        string outStr = Tokens[CurIn].output;
+                        CurIn++;
                         var englishCulture = CultureInfo.GetCultureInfo("en-US");
-                        next.tree = new Tree(new Tree.Number(double.Parse(tokens[0].output, englishCulture)));
+                        next = new Tree(new Tree.Number(double.Parse(outStr, englishCulture)));
                         return next;
                     }
                     break;
 
                 case "Operator":
                     {
-                        if (tokens[0].output == "-")
+                        if (Tokens[CurIn].output == "-")
                         {
-                            StepComp temp = ParseV(tokens.Skip(1).ToList());
+                            Tree temp = ParseV(CurIn++);
 
-                            StepComp next;
-                            next.results = temp.results;
-                            next.tree = new Tree(new Tree.UnarMinus(temp.tree.Nodes));
+                            Tree next;
+                            CurIn++;
+                            next = new Tree(new Tree.UnarMinus(temp.Nodes));
                             return next;
                         }
 
@@ -313,25 +307,23 @@ namespace Lexer
                     break;
             }
 
-            throw new ParserException("(, Id, Number или -", tokens);
+            throw new ParserException("(, Id, Number или -", Tokens, CurIn);
         }
     }
 
     class ParserException : Exception //класс исключения работы синтаксического анализатора
     {
-        public ParserException(string mes, List<Lexer.ResultToken> tok):base(mes)
+        public ParserException(string mes, List<Lexer.ResultToken> tok, int ind):base(mes)
         {
             string ErrMes = "Ошибка: ожидалось \"" + mes + "\" но получен ";
 
-            if(tok.Count == 0)
+            if(ind > tok.Count - 1)
                 ErrMes += "конец ввода";
             else
-                ErrMes += "\"" + tok[0].output + "\"";
+                ErrMes += "\"" + tok[ind].output + "\"";
 
             Console.WriteLine(ErrMes);
-        }
-        
-        
+        }     
     }
 
 }
