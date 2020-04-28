@@ -184,24 +184,24 @@ namespace Lexer
                         {
                             if (Tokens[CurIn].output == "*")
                             {
-                                Tree temp = ParseT(CurIn++);
+                                Tree temp = ParseF(CurIn++);
 
                                 Tree next;
                                 next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Mult,
                                                                                     comp.Nodes,
                                                                                     temp.Nodes));
-                                return ParseE2(next);
+                                return ParseT2(next);
                             }
 
                             else if (Tokens[CurIn].output == "/")
                             {
-                                Tree temp = ParseT(CurIn++);
+                                Tree temp = ParseF(CurIn++);
 
                                 Tree next;
                                 next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Div,
                                                                                     comp.Nodes,
                                                                                     temp.Nodes));
-                                return ParseE2(next);
+                                return ParseT2(next);
                             }
                         }
                         break;
@@ -229,13 +229,13 @@ namespace Lexer
                         {
                             if (Tokens[CurIn].output == "^")
                             {
-                                Tree temp = ParseT(CurIn++);
+                                Tree temp = ParseF(CurIn++);
 
                                 Tree next;
                                 next = new Tree(new Tree.BinOperator(Tree.Node.OperatorType.Exp,
                                                                                     comp.Nodes,
                                                                                     temp.Nodes));
-                                return ParseE2(next);
+                                return next;
                             }
                         }
                         break;
